@@ -1,1 +1,181 @@
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
+class Train {
+    private final int number;
+    private final String name;
+    private final String source;
+    private final String destination;
+    private int availableSeats;
+
+    Train(int number, String name, String source, String destination, int seats) {
+        this.number = number;
+        this.name = name;
+        this.source = source;
+        this.destination = destination;
+        this.availableSeats = seats;
+    }
+
+    int getNumber() { return number; }
+    int getAvailableSeats() { return availableSeats; }
+    void reserveSeat() { availableSeats--; }
+    void releaseSeat() { availableSeats++; }
+
+    @Override
+    public String toString() {
+        return number + " | " + name + " | " + source + " -> " + destination
+                + " | Seats available: " + availableSeats;
+    }
+}
+
+class Reservation {
+    private final String bookingId;
+    private final String passengerName;
+    private final int age;
+    private final Train train;
+    private boolean cancelled;
+
+    Reservation(String bookingId, String passengerName, int age, Train train) {
+        this.bookingId = bookingId;
+        this.passengerName = passengerName;
+        this.age = age;
+        this.train = train;
+        this.cancelled = false;
+    }
+
+    String getBookingId() { return bookingId; }
+    boolean isCancelled() { return cancelled; }
+    Train trainReference() { return train; }
+    void cancel() { cancelled = true; }
+
+    void display() {
+        System.out.println("Booking ID : " + bookingId);
+        System.out.println("Passenger  : " + passengerName);
+        System.out.println("Age        : " + age);
+        System.out.println("Train      : " + train);
+        System.out.println("Status     : " + (cancelled ? "CANCELLED" : "CONFIRMED"));
+    }
+}
+
+public class RailwayTicketReservationSystem {
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final List<Train> trains = new ArrayList<>();
+    private static final Map<String, Reservation> bookings = new LinkedHashMap<>();
+    private static int nextBookingNumber = 1001;
+
+    public static void main(String[] args) {
+        loadSampleTrains();
+        boolean running = true;
+        while (running) {
+            System.out.println("\n=== RAILWAY TICKET RESERVATION SYSTEM ===");
+            System.out.println("1. View trains");
+            System.out.println("2. Book ticket");
+            System.out.println("3. Search booking");
+            System.out.println("4. Cancel ticket");
+            System.out.println("5. Exit");
+            int choice = readInt("Enter choice: ");
+            switch (choice) {
+                case 1: viewTrains(); break;
+                case 2: bookTicket(); break;
+                case 3: searchBooking(); break;
+                case 4: cancelTicket(); break;
+                case 5: running = false; System.out.println("Thank you."); break;
+                default: System.out.println("Invalid choice. Select 1 to 5.");
+            }
+        }
+        scanner.close();
+    }
+
+    private static void loadSampleTrains() {
+        trains.add(new Train(12723, "Telangana Express", "Hyderabad", "New Delhi", 3));
+        trains.add(new Train(12702, "Hussain Sagar Express", "Hyderabad", "Mumbai", 2));
+        trains.add(new Train(12603, "Charminar Express", "Hyderabad", "Chennai", 4));
+    }
+
+    private static void viewTrains() {
+        System.out.println("\nTrain No. | Name | Route | Availability");
+        for (Train train : trains) System.out.println(train);
+    }
+
+    private static void bookTicket() {
+        viewTrains();
+        int trainNumber = readInt("Enter train number: ");
+        Train selected = findTrain(trainNumber);
+        if (selected == null) {
+            System.out.println("Train not found.");
+            return;
+        }
+        if (selected.getAvailableSeats() <= 0) {
+            System.out.println("No seats available on this train.");
+            return;
+        }
+        String name;
+        do {
+            System.out.print("Enter passenger name: ");
+            name = scanner.nextLine().trim();
+            if (name.isEmpty()) System.out.println("Name cannot be blank.");
+        } while (name.isEmpty());
+        int age = readInt("Enter passenger age: ");
+        if (age < 1 || age > 120) {
+            System.out.println("Enter a valid age between 1 and 120.");
+            return;
+        }
+        String id = "RTS" + nextBookingNumber++;
+        Reservation reservation = new Reservation(id, name, age, selected);
+        bookings.put(id, reservation);
+        selected.reserveSeat();
+        System.out.println("Booking successful. Your booking ID is " + id);
+        reservation.display();
+    }
+
+    private static void searchBooking() {
+        System.out.print("Enter booking ID: ");
+        String id = scanner.nextLine().trim().toUpperCase();
+        Reservation reservation = bookings.get(id);
+        if (reservation == null) System.out.println("Booking not found.");
+        else reservation.display();
+    }
+
+    private static void cancelTicket() {
+        System.out.print("Enter booking ID to cancel: ");
+        String id = scanner.nextLine().trim().toUpperCase();
+        Reservation reservation = bookings.get(id);
+        if (reservation == null) {
+            System.out.println("Booking not found.");
+        } else if (reservation.isCancelled()) {
+            System.out.println("This booking has already been cancelled.");
+        } else {
+            reservation.cancel();
+            // Restore the seat only once for an active reservation.
+            findTrainForReservation(reservation).releaseSeat();
+            System.out.println("Booking " + id + " cancelled successfully.");
+        }
+    }
+
+    private static Train findTrainForReservation(Reservation reservation) {
+        // Each reservation retains its train object; this helper resolves it by listing.
+        // In this small prototype, the train reference is included in the reservation.
+        return reservation.trainReference();
+    }
+
+    private static Train findTrain(int number) {
+        for (Train train : trains) if (train.getNumber() == number) return train;
+        return null;
+    }
+
+    private static int readInt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException ex) {
+                System.out.println("Please enter a whole number.");
+            }
+        }
+    }
+}
 
